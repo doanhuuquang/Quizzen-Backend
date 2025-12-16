@@ -1,9 +1,4 @@
 ﻿using Quizzen.Domain.Requests;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Quizzen.Application.Abstracts
 {
@@ -11,6 +6,7 @@ namespace Quizzen.Application.Abstracts
     {
         Task RegisterAsync(RegisterRequest registerRequest);
         Task LoginAsync(LoginRequest loginRequest);
+        Task LogoutAsync(string? refreshToken);
         Task RefreshTokenAsync(string? refreshToken);
     }
 }

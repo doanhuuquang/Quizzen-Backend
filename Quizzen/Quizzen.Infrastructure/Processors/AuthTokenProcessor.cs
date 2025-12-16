@@ -11,20 +11,11 @@ using System.Text;
 
 namespace Quizzen.Infrastructure.Processors
 {
-    public class AuthTokenProcessor : IAuthTokenProcessor
+    public class AuthTokenProcessor(IOptions<JwtOptions> jwtOptions, IHttpContextAccessor httpContextAccessor) : IAuthTokenProcessor
     {
-        private readonly JwtOptions jwtOptions;
-        private readonly IHttpContextAccessor httpContextAccessor;
-
-        public AuthTokenProcessor(IOptions<JwtOptions> jwtOptions, IHttpContextAccessor httpContextAccessor)
-        {
-            this.jwtOptions = jwtOptions.Value;
-            this.httpContextAccessor = httpContextAccessor;
-        }
-
         public (string jwtToken, DateTime expiresAtUtc) GenerateJwtToken(User user)
         {
-            var signingKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtOptions.Secret));
+            var signingKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtOptions.Value.Secret));
 
             var credentials = new SigningCredentials(signingKey, SecurityAlgorithms.HmacSha256);
 
@@ -36,14 +27,14 @@ namespace Quizzen.Infrastructure.Processors
                 new Claim(ClaimTypes.NameIdentifier, user.ToString()),
             };
 
-            var expires = DateTime.UtcNow.AddMinutes(jwtOptions.ExpirationTimeInMinutes);
+            var expires = DateTime.UtcNow.AddMinutes(jwtOptions.Value.ExpirationTimeInMinutes);
 
             var token = new JwtSecurityToken(
-                issuer: jwtOptions.Issuer,
-                audience: jwtOptions.Audience,
-                claims: claims,
-                expires: expires,
-                signingCredentials: credentials
+                issuer              : jwtOptions.Value.Issuer,
+                audience            : jwtOptions.Value.Audience,
+                claims              : claims,
+                expires             : expires,
+                signingCredentials  : credentials
             );
 
             var jwtToken = new JwtSecurityTokenHandler().WriteToken(token);
@@ -60,17 +51,22 @@ namespace Quizzen.Infrastructure.Processors
 
         public void WriteAuthTokenAsHttpOnlyCookie(string cookieName, string token, DateTime expiration)
         {
-            httpContextAccessor.HttpContext.Response.Cookies.Append(
-                cookieName,
-                token,
-                new CookieOptions
-                {
-                    HttpOnly = true,
-                    Expires = expiration,
-                    IsEssential = true,
-                    Secure = true,
-                }
-            );
+            httpContextAccessor?.HttpContext?.Response.Cookies.Append(
+            cookieName,
+            token,
+            new CookieOptions
+            {
+                HttpOnly    = true,
+                Expires     = expiration,
+                IsEssential = true,
+                Secure      = true,
+            }
+        );
+        }
+        
+        public void DeleteAuthTokenCookie(string cookieName)
+        {
+            httpContextAccessor?.HttpContext?.Response.Cookies.Delete(cookieName);
         }
     }
 }

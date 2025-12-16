@@ -1,27 +1,28 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Quizzen.API.ApiResponse;
 using Quizzen.Application.Abstracts;
-using Quizzen.Application.Services;
 using Quizzen.Domain.Requests;
 
 namespace Quizzen.API.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class AccountController : ControllerBase
+    public class AccountController(IAccountService accountService) : ControllerBase
     {
-        private readonly IAccountService accountService;
-
-        public AccountController(IAccountService accountService)
-        {
-            this.accountService = accountService;
-        }
-
         [HttpPost("register")]
         public async Task<IActionResult> Register(RegisterRequest registerRequest)
         {
             await accountService.RegisterAsync(registerRequest);
 
-            return Ok();
+            var response = new SuccessResponse<object?>(
+                StatusCode  : 200,
+                Message     : "Register successful.",
+                Data        : null,
+                Timestamp   : DateTime.UtcNow
+            );
+
+            return Ok(response);
         }
 
         [HttpPost("login")]
@@ -29,7 +30,32 @@ namespace Quizzen.API.Controllers
         {
             await accountService.LoginAsync(loginRequest);
 
-            return Ok();
+            var response = new SuccessResponse<object?>(
+                StatusCode  : 200,
+                Message     : "Login successful.",
+                Data        : null,
+                Timestamp   : DateTime.UtcNow
+            );
+
+            return Ok(response);
+        }
+
+        [HttpPost("logout")]
+        [Authorize]
+        public async Task<IActionResult> Logout()
+        {
+            var refreshToken = HttpContext.Request.Cookies["REFRESH_TOKEN"];
+
+            await accountService.LogoutAsync(refreshToken);
+
+            var response = new SuccessResponse<object?>(
+                StatusCode: 200,
+                Message: "Logout successful.",
+                Data: null,
+                Timestamp: DateTime.UtcNow
+            );
+
+            return Ok(response);
         }
 
         [HttpPost("refresh")]
@@ -39,7 +65,14 @@ namespace Quizzen.API.Controllers
 
             await accountService.RefreshTokenAsync(refreshToken);
 
-            return Ok();
+            var response = new SuccessResponse<object?>(
+                StatusCode  : 200,
+                Message     : "Refresh token successful.",
+                Data        : null,
+                Timestamp   : DateTime.UtcNow
+            );
+
+            return Ok(response);
         }
     }
 }

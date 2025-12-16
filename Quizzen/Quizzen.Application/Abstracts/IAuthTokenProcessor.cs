@@ -7,5 +7,6 @@ namespace Quizzen.Application.Abstracts
         public (string jwtToken, DateTime expiresAtUtc) GenerateJwtToken(User user);
         public string GenerateRefreshToken();
         public void WriteAuthTokenAsHttpOnlyCookie(string cookieName, string token, DateTime expiration);
+        public void DeleteAuthTokenCookie(string cookieName);
     }
 }

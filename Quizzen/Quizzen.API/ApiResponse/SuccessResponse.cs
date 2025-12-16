@@ -1,10 +1,10 @@
-﻿namespace Quizzen.API.Contracts
+﻿namespace Quizzen.API.ApiResponse
 {
-    public record ErrorResponse
+    public record SuccessResponse<T>
     (
         int StatusCode,
-        string Error,
         string Message,
+        T? Data,
         DateTime Timestamp
     );
 }
