@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Facebook;
 using Microsoft.AspNetCore.Authentication.Google;
+using Microsoft.AspNetCore.Authentication.MicrosoftAccount;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -16,6 +17,11 @@ namespace Quizzen.API.Controllers
     [ApiController]
     public class AccountController(IAccountService accountService, SignInManager<User> signInManager, LinkGenerator linkGenerator) : ControllerBase
     {
+        /// <summary>
+        ///
+        /// </summary>
+        /// <param name="registerRequest"></param>
+        /// <returns></returns>
         [HttpPost("register")]
         public async Task<IActionResult> Register(RegisterRequest registerRequest)
         {
@@ -31,6 +37,11 @@ namespace Quizzen.API.Controllers
             return Ok(response);
         }
 
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="loginRequest"></param>
+        /// <returns></returns>
         [HttpPost("login")]
         public async Task<IActionResult> Login(LoginRequest loginRequest)
         {
@@ -46,6 +57,10 @@ namespace Quizzen.API.Controllers
             return Ok(response);
         }
 
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <returns></returns>
         [HttpPost("logout")]
         [Authorize]
         public async Task<IActionResult> Logout()
@@ -64,6 +79,10 @@ namespace Quizzen.API.Controllers
             return Ok(response);
         }
 
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <returns></returns>
         [HttpPost("refresh")]
         public async Task<IActionResult> Refresh()
         {
@@ -81,6 +100,11 @@ namespace Quizzen.API.Controllers
             return Ok(response);
         }
 
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="returnUrl"></param>
+        /// <returns></returns>
         [HttpGet("login/google")]
         public IActionResult LoginGoogle([FromQuery] string? returnUrl)
         {
@@ -96,6 +120,10 @@ namespace Quizzen.API.Controllers
             return Challenge(properties, GoogleDefaults.AuthenticationScheme);
         }
 
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <returns></returns>
         [HttpGet("login/google/callback", Name = "GoogleLoginCallback")]
         public async Task<IActionResult> LoginGoogleCallback()
         {
@@ -110,6 +138,11 @@ namespace Quizzen.API.Controllers
             return Redirect(returnUrl);
         }
 
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="returnUrl"></param>
+        /// <returns></returns>
         [HttpGet("login/facebook")]
         public IActionResult LoginFacebook([FromQuery] string? returnUrl)
         {
@@ -125,6 +158,10 @@ namespace Quizzen.API.Controllers
             return Challenge(properties, FacebookDefaults.AuthenticationScheme);
         }
 
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <returns></returns>
         [HttpGet("login/facebook/callback", Name = "FacebookLoginCallback")]
         public async Task<IActionResult> LoginFacebookCallback()
         {
@@ -135,6 +172,44 @@ namespace Quizzen.API.Controllers
             var returnUrl = result.Properties?.Items["returnUrl"] ?? "/";
 
             await accountService.LoginWithFacebookAsync(result.Principal);
+
+            return Redirect(returnUrl);
+        }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="returnUrl"></param>
+        /// <returns></returns>
+        [HttpGet("login/microsoft")]
+        public IActionResult LoginMicrosoft([FromQuery] string? returnUrl)
+        {
+            var redirectUrl = linkGenerator.GetPathByName(HttpContext, "MicrosoftLoginCallback");
+
+            var properties = signInManager.ConfigureExternalAuthenticationProperties(
+                MicrosoftAccountDefaults.AuthenticationScheme,
+                redirectUrl
+            );
+
+            properties.Items["returnUrl"] = returnUrl ?? "/";
+
+            return Challenge(properties, MicrosoftAccountDefaults.AuthenticationScheme);
+        }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <returns></returns>
+        [HttpGet("login/microsoft/callback", Name = "MicrosoftLoginCallback")]
+        public async Task<IActionResult> LoginMicrosoftCallback()
+        {
+            var result = await HttpContext.AuthenticateAsync(MicrosoftAccountDefaults.AuthenticationScheme);
+
+            if (!result.Succeeded) return Unauthorized();
+
+            var returnUrl = result.Properties?.Items["returnUrl"] ?? "/";
+
+            await accountService.LoginWithMicrosoftAsync(result.Principal);
 
             return Redirect(returnUrl);
         }

@@ -95,6 +95,28 @@ builder.Services
 
         if (string.IsNullOrEmpty(clientSecret)) throw new ArgumentNullException(null, nameof(clientSecret));
 
+        options.ClientId        = clientId;
+        options.ClientSecret    = clientSecret;
+        options.SignInScheme    = CookieAuthenticationDefaults.AuthenticationScheme;
+
+        options.Events.OnRemoteFailure = context =>
+        {
+            context.HandleResponse();
+
+            context.Response.Redirect("http://localhost:3000/sign-in");
+
+            return Task.CompletedTask;
+        };
+    })
+    .AddMicrosoftAccount(options => {
+        var clientId = builder.Configuration["Authentication:Microsoft:ClientId"];
+
+        if (string.IsNullOrEmpty(clientId)) throw new ArgumentNullException(null, nameof(clientId));
+
+        var clientSecret = builder.Configuration["Authentication:Microsoft:ClientSecret"];
+
+        if (string.IsNullOrEmpty(clientSecret)) throw new ArgumentNullException(null, nameof(clientSecret));
+
         options.ClientId = clientId;
         options.ClientSecret = clientSecret;
         options.SignInScheme = CookieAuthenticationDefaults.AuthenticationScheme;
