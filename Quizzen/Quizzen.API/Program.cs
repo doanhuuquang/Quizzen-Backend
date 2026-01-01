@@ -1,4 +1,6 @@
-﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
+﻿using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -10,15 +12,29 @@ using Quizzen.Infrastructure;
 using Quizzen.Infrastructure.Options;
 using Quizzen.Infrastructure.Processors;
 using Quizzen.Infrastructure.Repositories;
+using System.Security.Claims;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowFrontend", policy =>
+    {
+        policy
+            .WithOrigins("http://localhost:3000")
+            .AllowAnyHeader()
+            .AllowAnyMethod()
+            .AllowCredentials();
+    });
+});
 
 builder.Services.AddSwaggerGen();
 
 builder.Services.AddControllers();
 
 builder.Services.AddEndpointsApiExplorer();
+
 
 builder.Services.Configure<JwtOptions>(builder.Configuration.GetSection(JwtOptions.JwtOptionsKey));
 
@@ -38,36 +54,85 @@ builder.Services.AddScoped<IAuthTokenProcessor, AuthTokenProcessor>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IAccountService, AccountService>();
 
-builder.Services.AddAuthentication(options =>
-{
-    options.DefaultAuthenticateScheme   = JwtBearerDefaults.AuthenticationScheme;
-    options.DefaultChallengeScheme      = JwtBearerDefaults.AuthenticationScheme;
-    options.DefaultSignInScheme         = JwtBearerDefaults.AuthenticationScheme;
-}).AddJwtBearer(options =>
-{
-    var jwtOptions = builder.Configuration.GetSection(JwtOptions.JwtOptionsKey)
-                    .Get<JwtOptions>() ?? throw new ArgumentException(nameof(JwtOptions));
-
-    options.TokenValidationParameters = new TokenValidationParameters
+builder.Services
+    .AddAuthentication(options =>
     {
-        ValidateIssuer              = true,
-        ValidateAudience            = true,
-        ValidateLifetime            = true,
-        ValidateIssuerSigningKey    = true,
-        ValidIssuer                 = jwtOptions.Issuer,
-        ValidAudience               = jwtOptions.Audience,
-        IssuerSigningKey            = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtOptions.Secret))
-    };
+        options.DefaultAuthenticateScheme   = JwtBearerDefaults.AuthenticationScheme;
+        options.DefaultChallengeScheme      = JwtBearerDefaults.AuthenticationScheme;
+        options.DefaultSignInScheme         = JwtBearerDefaults.AuthenticationScheme;
+    })
+    .AddCookie()
+    .AddGoogle(options => {
+        var clientId = builder.Configuration["Authentication:Google:ClientId"];
+    
+        if(string.IsNullOrEmpty(clientId)) throw new ArgumentNullException(null, nameof(clientId));
 
-    options.Events = new JwtBearerEvents
-    {
-        OnMessageReceived = context =>
+        var clientSecret = builder.Configuration["Authentication:Google:ClientSecret"];
+    
+        if (string.IsNullOrEmpty(clientSecret)) throw new ArgumentNullException(null, nameof(clientSecret));
+
+        options.ClientId        = clientId;
+        options.ClientSecret    = clientSecret;
+        options.SignInScheme    = CookieAuthenticationDefaults.AuthenticationScheme;
+
+        options.ClaimActions.MapJsonKey("image", "picture");
+
+        options.Events.OnRemoteFailure = context =>
         {
-            context.Token = context.Request.Cookies["ACCESS_TOKEN"];
+            context.HandleResponse();
+
+            context.Response.Redirect("http://localhost:3000/sign-in");
+
             return Task.CompletedTask;
-        }
-    };
-});
+        };
+    })
+    .AddFacebook(options => {
+        var clientId = builder.Configuration["Authentication:Facebook:ClientId"];
+
+        if (string.IsNullOrEmpty(clientId)) throw new ArgumentNullException(null, nameof(clientId));
+
+        var clientSecret = builder.Configuration["Authentication:Facebook:ClientSecret"];
+
+        if (string.IsNullOrEmpty(clientSecret)) throw new ArgumentNullException(null, nameof(clientSecret));
+
+        options.ClientId = clientId;
+        options.ClientSecret = clientSecret;
+        options.SignInScheme = CookieAuthenticationDefaults.AuthenticationScheme;
+
+        options.Events.OnRemoteFailure = context =>
+        {
+            context.HandleResponse();
+
+            context.Response.Redirect("http://localhost:3000/sign-in");
+
+            return Task.CompletedTask;
+        };
+    })
+    .AddJwtBearer(options =>
+    {
+        var jwtOptions = builder.Configuration.GetSection(JwtOptions.JwtOptionsKey)
+                        .Get<JwtOptions>() ?? throw new ArgumentException(nameof(JwtOptions));
+
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer              = true,
+            ValidateAudience            = true,
+            ValidateLifetime            = true,
+            ValidateIssuerSigningKey    = true,
+            ValidIssuer                 = jwtOptions.Issuer,
+            ValidAudience               = jwtOptions.Audience,
+            IssuerSigningKey            = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtOptions.Secret))
+        };
+
+        options.Events = new JwtBearerEvents
+        {
+            OnMessageReceived = context =>
+            {
+                context.Token = context.Request.Cookies["ACCESS_TOKEN"];
+                return Task.CompletedTask;
+            }
+        };
+    });
 
 builder.Services.AddAuthorization();
 
@@ -85,6 +150,8 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+app.UseCors("AllowFrontend");
 
 app.UseAuthentication();
 app.UseAuthorization();

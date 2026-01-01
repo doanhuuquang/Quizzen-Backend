@@ -3,6 +3,7 @@ using Quizzen.Application.Abstracts;
 using Quizzen.Domain.Entities;
 using Quizzen.Domain.Exceptions;
 using Quizzen.Domain.Requests;
+using System.Security.Claims;
 
 namespace Quizzen.Application.Services
 {
@@ -14,10 +15,11 @@ namespace Quizzen.Application.Services
 
             if (userExists is not null) throw new UserAlreadyExistsException(email: registerRequest.Email);
 
-            var user            = User.Create(registerRequest.Email, registerRequest.FirstName,registerRequest.MidName, registerRequest.LastName);
-            user.PasswordHash   = userManager.PasswordHasher.HashPassword(user, registerRequest.Password);
+            var user            = User.Create(registerRequest.Email);
+            user.FirstName      = registerRequest.FirstName;
+            user.LastName       = registerRequest.LastName;
 
-            var result = await userManager.CreateAsync(user);
+            var result = await userManager.CreateAsync(user, registerRequest.Password);
 
             if (!result.Succeeded) throw new RegistrationFailedException(result.Errors.Select(x => x.Description));
         }
@@ -74,6 +76,114 @@ namespace Quizzen.Application.Services
 
             user.RefreshToken               = refreshTokenValue;
             user.RefreshTokenExpiresAtUtc   = refreshTokenExpirationInUtc;
+
+            await userManager.UpdateAsync(user);
+
+            authTokenProcessor.WriteAuthTokenAsHttpOnlyCookie("ACCESS_TOKEN", jwtToken, expirationDateInUtc);
+            authTokenProcessor.WriteAuthTokenAsHttpOnlyCookie("REFRESH_TOKEN", refreshTokenValue, refreshTokenExpirationInUtc);
+        }
+
+        public async Task LoginWithGoogleAsync(ClaimsPrincipal? claimsPrincipal)
+        {
+            if (claimsPrincipal == null) throw new ExternalLoginProviderException("Google", "ClaimsPrincipal is null");
+                 
+            var email = claimsPrincipal.FindFirstValue(ClaimTypes.Email) ?? throw new ExternalLoginProviderException("Google", "Email not found");
+
+            var providerKey = claimsPrincipal.FindFirstValue(ClaimTypes.NameIdentifier) ?? throw new ExternalLoginProviderException("Google", "Provider key not found");
+
+            var user = await userManager.FindByLoginAsync("Google", providerKey);
+
+            if (user == null)
+            {
+                user = await userManager.FindByEmailAsync(email);
+
+                if (user == null)
+                {
+                    var newUser = new User
+                    {
+                        UserName            = email,
+                        Email               = email,
+                        FirstName           = claimsPrincipal.FindFirstValue(ClaimTypes.GivenName) ?? string.Empty,
+                        LastName            = claimsPrincipal.FindFirstValue(ClaimTypes.Surname) ?? string.Empty,
+                        ProfilePictureUrl   = claimsPrincipal.FindFirst("image")?.Value ?? string.Empty,
+                        EmailConfirmed      = true
+                    };
+
+                    var result = await userManager.CreateAsync(newUser);
+
+                    if (!result.Succeeded) throw new ExternalLoginProviderException("Google", $"Unable to creat user: {string.Join(", ", result.Errors.Select(x => x.Description))}");
+
+                    user = newUser;
+                }
+
+                var info = new UserLoginInfo("Google", providerKey, "Google");
+
+                var loginResult = await userManager.AddLoginAsync(user, info);
+
+                if (!loginResult.Succeeded) throw new ExternalLoginProviderException("Google", $"Unable to login the user: {string.Join(", ", loginResult.Errors.Select(x => x.Description))}");
+            }
+
+            var (jwtToken, expirationDateInUtc) = authTokenProcessor.GenerateJwtToken(user);
+            var refreshTokenValue = authTokenProcessor.GenerateRefreshToken();
+
+            var refreshTokenExpirationInUtc = DateTime.UtcNow.AddDays(30);
+
+            user.RefreshToken = refreshTokenValue;
+            user.RefreshTokenExpiresAtUtc = refreshTokenExpirationInUtc;
+
+            await userManager.UpdateAsync(user);
+
+            authTokenProcessor.WriteAuthTokenAsHttpOnlyCookie("ACCESS_TOKEN", jwtToken, expirationDateInUtc);
+            authTokenProcessor.WriteAuthTokenAsHttpOnlyCookie("REFRESH_TOKEN", refreshTokenValue, refreshTokenExpirationInUtc);
+        }
+
+        public async Task LoginWithFacebookAsync(ClaimsPrincipal? claimsPrincipal)
+        {
+            if (claimsPrincipal == null) throw new ExternalLoginProviderException("Facebook", "ClaimsPrincipal is null");
+
+            var email = claimsPrincipal.FindFirstValue(ClaimTypes.Email) ?? throw new ExternalLoginProviderException("Facebook", "Email not found");
+
+            var providerKey = claimsPrincipal.FindFirstValue(ClaimTypes.NameIdentifier) ?? throw new ExternalLoginProviderException("Facebook", "Provider key not found");
+
+            var user = await userManager.FindByLoginAsync("Facebook", providerKey);
+
+            if (user == null)
+            {
+                user = await userManager.FindByEmailAsync(email);
+
+                if (user == null)
+                {
+                    var newUser = new User
+                    {
+                        UserName            = email,
+                        Email               = email,
+                        FirstName           = claimsPrincipal.FindFirstValue(ClaimTypes.GivenName) ?? string.Empty,
+                        LastName            = claimsPrincipal.FindFirstValue(ClaimTypes.Surname) ?? string.Empty,
+                        ProfilePictureUrl   = $"https://graph.facebook.com/{providerKey}/picture?type=large",
+                        EmailConfirmed = true
+                    };
+
+                    var result = await userManager.CreateAsync(newUser);
+
+                    if (!result.Succeeded) throw new ExternalLoginProviderException("Facebook", $"Unable to creat user: {string.Join(", ", result.Errors.Select(x => x.Description))}");
+
+                    user = newUser;
+                }
+
+                var info = new UserLoginInfo("Facebook", providerKey, "Facebook");
+
+                var loginResult = await userManager.AddLoginAsync(user, info);
+
+                if (!loginResult.Succeeded) throw new ExternalLoginProviderException("Facebook", $"Unable to login the user: {string.Join(", ", loginResult.Errors.Select(x => x.Description))}");
+            }
+
+            var (jwtToken, expirationDateInUtc) = authTokenProcessor.GenerateJwtToken(user);
+            var refreshTokenValue = authTokenProcessor.GenerateRefreshToken();
+
+            var refreshTokenExpirationInUtc = DateTime.UtcNow.AddDays(30);
+
+            user.RefreshToken = refreshTokenValue;
+            user.RefreshTokenExpiresAtUtc = refreshTokenExpirationInUtc;
 
             await userManager.UpdateAsync(user);
 

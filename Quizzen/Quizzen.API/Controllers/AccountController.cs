@@ -1,14 +1,20 @@
-﻿using Microsoft.AspNetCore.Authorization;
+﻿using Azure;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Facebook;
+using Microsoft.AspNetCore.Authentication.Google;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Quizzen.API.ApiResponse;
 using Quizzen.Application.Abstracts;
+using Quizzen.Domain.Entities;
 using Quizzen.Domain.Requests;
 
 namespace Quizzen.API.Controllers
 {
-    [Route("api/[controller]")]
+    [Route("api/account")]
     [ApiController]
-    public class AccountController(IAccountService accountService) : ControllerBase
+    public class AccountController(IAccountService accountService, SignInManager<User> signInManager, LinkGenerator linkGenerator) : ControllerBase
     {
         [HttpPost("register")]
         public async Task<IActionResult> Register(RegisterRequest registerRequest)
@@ -74,5 +80,63 @@ namespace Quizzen.API.Controllers
 
             return Ok(response);
         }
-    }
+
+        [HttpGet("login/google")]
+        public IActionResult LoginGoogle([FromQuery] string? returnUrl)
+        {
+            var redirectUrl = linkGenerator.GetPathByName(HttpContext, "GoogleLoginCallback");
+
+            var properties = signInManager.ConfigureExternalAuthenticationProperties(
+                GoogleDefaults.AuthenticationScheme,
+                redirectUrl
+            );
+
+            properties.Items["returnUrl"] = returnUrl ?? "/";
+
+            return Challenge(properties, GoogleDefaults.AuthenticationScheme);
+        }
+
+        [HttpGet("login/google/callback", Name = "GoogleLoginCallback")]
+        public async Task<IActionResult> LoginGoogleCallback()
+        {
+            var result = await HttpContext.AuthenticateAsync(GoogleDefaults.AuthenticationScheme);
+
+            if (!result.Succeeded) return Unauthorized();
+
+            var returnUrl = result.Properties?.Items["returnUrl"] ?? "/";
+
+            await accountService.LoginWithGoogleAsync(result.Principal);
+
+            return Redirect(returnUrl);
+        }
+
+        [HttpGet("login/facebook")]
+        public IActionResult LoginFacebook([FromQuery] string? returnUrl)
+        {
+            var redirectUrl = linkGenerator.GetPathByName(HttpContext, "FacebookLoginCallback");
+
+            var properties = signInManager.ConfigureExternalAuthenticationProperties(
+                FacebookDefaults.AuthenticationScheme,
+                redirectUrl
+            );
+
+            properties.Items["returnUrl"] = returnUrl ?? "/";
+
+            return Challenge(properties, FacebookDefaults.AuthenticationScheme);
+        }
+
+        [HttpGet("login/facebook/callback", Name = "FacebookLoginCallback")]
+        public async Task<IActionResult> LoginFacebookCallback()
+        {
+            var result = await HttpContext.AuthenticateAsync(FacebookDefaults.AuthenticationScheme);
+
+            if (!result.Succeeded) return Unauthorized();
+
+            var returnUrl = result.Properties?.Items["returnUrl"] ?? "/";
+
+            await accountService.LoginWithFacebookAsync(result.Principal);
+
+            return Redirect(returnUrl);
+        }
+    }   
 }
