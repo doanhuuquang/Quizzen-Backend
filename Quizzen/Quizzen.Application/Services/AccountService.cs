@@ -7,7 +7,7 @@ using System.Security.Claims;
 
 namespace Quizzen.Application.Services
 {
-    public class AccountService(IAuthTokenProcessor authTokenProcessor, UserManager<User> userManager, IUserRepository userRepository) : IAccountService
+    public class AccountService(IAuthTokenProcessor authTokenProcessor, IEmailProcessor emailProcessor, UserManager<User> userManager, IUserRepository userRepository) : IAccountService
     {
         public async Task RegisterAsync(RegisterRequest registerRequest)
         {
@@ -81,6 +81,23 @@ namespace Quizzen.Application.Services
 
             authTokenProcessor.WriteAuthTokenAsHttpOnlyCookie("ACCESS_TOKEN", jwtToken, expirationDateInUtc);
             authTokenProcessor.WriteAuthTokenAsHttpOnlyCookie("REFRESH_TOKEN", refreshTokenValue, refreshTokenExpirationInUtc);
+        }
+
+        public async Task RecoverUsername(string email)
+        {
+            var userExists = await userManager.FindByEmailAsync(email);
+
+            if (userExists is null) throw new UserNotExistsException(email: email);
+            else 
+            {
+                var emailRequest = new EmailRequest
+                {
+                    Receptor    = email,
+                    subject     = "Username Recovery",
+                    body        = $"Hello {userExists.FirstName},\n\nYour username is: {userExists.UserName}\n\nBest regards,\nQuizzen Team"
+                };
+                await emailProcessor.SendEmail(emailRequest);
+            }
         }
 
         public async Task LoginWithGoogleAsync(ClaimsPrincipal? claimsPrincipal)
@@ -175,6 +192,60 @@ namespace Quizzen.Application.Services
                 var loginResult = await userManager.AddLoginAsync(user, info);
 
                 if (!loginResult.Succeeded) throw new ExternalLoginProviderException("Facebook", $"Unable to login the user: {string.Join(", ", loginResult.Errors.Select(x => x.Description))}");
+            }
+
+            var (jwtToken, expirationDateInUtc) = authTokenProcessor.GenerateJwtToken(user);
+            var refreshTokenValue = authTokenProcessor.GenerateRefreshToken();
+
+            var refreshTokenExpirationInUtc = DateTime.UtcNow.AddDays(30);
+
+            user.RefreshToken = refreshTokenValue;
+            user.RefreshTokenExpiresAtUtc = refreshTokenExpirationInUtc;
+
+            await userManager.UpdateAsync(user);
+
+            authTokenProcessor.WriteAuthTokenAsHttpOnlyCookie("ACCESS_TOKEN", jwtToken, expirationDateInUtc);
+            authTokenProcessor.WriteAuthTokenAsHttpOnlyCookie("REFRESH_TOKEN", refreshTokenValue, refreshTokenExpirationInUtc);
+        }
+
+        public async Task LoginWithMicrosoftAsync(ClaimsPrincipal? claimsPrincipal)
+        {
+            if (claimsPrincipal == null) throw new ExternalLoginProviderException("Microsoft", "ClaimsPrincipal is null");
+
+            var email = claimsPrincipal.FindFirstValue(ClaimTypes.Email) ?? throw new ExternalLoginProviderException("Microsoft", "Email not found");
+
+            var providerKey = claimsPrincipal.FindFirstValue(ClaimTypes.NameIdentifier) ?? throw new ExternalLoginProviderException("Microsoft", "Provider key not found");
+
+            var user = await userManager.FindByLoginAsync("Microsoft", providerKey);
+
+            if (user == null)
+            {
+                user = await userManager.FindByEmailAsync(email);
+
+                if (user == null)
+                {
+                    var newUser = new User
+                    {
+                        UserName = email,
+                        Email = email,
+                        FirstName = claimsPrincipal.FindFirstValue(ClaimTypes.GivenName) ?? string.Empty,
+                        LastName = claimsPrincipal.FindFirstValue(ClaimTypes.Surname) ?? string.Empty,
+                        
+                        EmailConfirmed = true
+                    };
+
+                    var result = await userManager.CreateAsync(newUser);
+
+                    if (!result.Succeeded) throw new ExternalLoginProviderException("Microsoft", $"Unable to creat user: {string.Join(", ", result.Errors.Select(x => x.Description))}");
+
+                    user = newUser;
+                }
+
+                var info = new UserLoginInfo("Microsoft", providerKey, "Microsoft");
+
+                var loginResult = await userManager.AddLoginAsync(user, info);
+
+                if (!loginResult.Succeeded) throw new ExternalLoginProviderException("Microsoft", $"Unable to login the user: {string.Join(", ", loginResult.Errors.Select(x => x.Description))}");
             }
 
             var (jwtToken, expirationDateInUtc) = authTokenProcessor.GenerateJwtToken(user);

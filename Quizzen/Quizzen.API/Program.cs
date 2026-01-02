@@ -12,7 +12,6 @@ using Quizzen.Infrastructure;
 using Quizzen.Infrastructure.Options;
 using Quizzen.Infrastructure.Processors;
 using Quizzen.Infrastructure.Repositories;
-using System.Security.Claims;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -37,6 +36,7 @@ builder.Services.AddEndpointsApiExplorer();
 
 
 builder.Services.Configure<JwtOptions>(builder.Configuration.GetSection(JwtOptions.JwtOptionsKey));
+builder.Services.Configure<EmailOptions>(builder.Configuration.GetSection(EmailOptions.EmailOptionsKey));
 
 builder.Services.AddIdentity<User, IdentityRole<Guid>>(options =>
 {
@@ -51,8 +51,10 @@ builder.Services.AddIdentity<User, IdentityRole<Guid>>(options =>
 builder.Services.AddDbContext<ApplicationDbContext>(options => options.UseSqlServer(builder.Configuration.GetConnectionString("DbConnectionString")));
 
 builder.Services.AddScoped<IAuthTokenProcessor, AuthTokenProcessor>();
+builder.Services.AddScoped<IEmailProcessor, EmailProcessor>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IAccountService, AccountService>();
+builder.Services.AddScoped<IEmailService, EmailService>();
 
 builder.Services
     .AddAuthentication(options =>

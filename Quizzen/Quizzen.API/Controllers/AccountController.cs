@@ -15,7 +15,7 @@ namespace Quizzen.API.Controllers
 {
     [Route("api/account")]
     [ApiController]
-    public class AccountController(IAccountService accountService, SignInManager<User> signInManager, LinkGenerator linkGenerator) : ControllerBase
+    public class AccountController(IAccountService accountService, IEmailService emailService, SignInManager<User> signInManager, LinkGenerator linkGenerator) : ControllerBase
     {
         /// <summary>
         ///
@@ -95,6 +95,25 @@ namespace Quizzen.API.Controllers
                 Message     : "Refresh token successful.",
                 Data        : null,
                 Timestamp   : DateTime.UtcNow
+            );
+
+            return Ok(response);
+        }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <returns></returns>
+        [HttpPost("recover-username")]
+        public async Task<IActionResult> RecoverUsername(string email)
+        {
+            await accountService.RecoverUsername(email);
+
+            var response = new SuccessResponse<object?>(
+                StatusCode: 200,
+                Message: "Recover username successful.",
+                Data: null,
+                Timestamp: DateTime.UtcNow
             );
 
             return Ok(response);

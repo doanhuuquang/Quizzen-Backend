@@ -16,6 +16,7 @@ namespace Quizzen.API.Handlers
                 UserAlreadyExistsException      => (HttpStatusCode.Conflict, "UserAlreadyExists"),
                 RegistrationFailedException     => (HttpStatusCode.BadRequest, "RegistrationFailed"),
                 RefreshTokenException           => (HttpStatusCode.Unauthorized, "RefreshTokenError"),
+                UserNotExistsException          => (HttpStatusCode.NotFound, "UserNotExists"),
                 _                               => (HttpStatusCode.InternalServerError, "InternalServerError")
             };
 
