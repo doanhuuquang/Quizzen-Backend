@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Quizzen.API.Handlers;
 using Quizzen.Application.Abstracts;
+using Quizzen.Application.Security;
 using Quizzen.Application.Services;
 using Quizzen.Domain.Entities;
 using Quizzen.Infrastructure;
@@ -54,7 +55,9 @@ builder.Services.AddScoped<IAuthTokenProcessor, AuthTokenProcessor>();
 builder.Services.AddScoped<IEmailProcessor, EmailProcessor>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IAccountService, AccountService>();
-builder.Services.AddScoped<IEmailService, EmailService>();
+builder.Services.AddScoped<IOTPGenerator, OTPGenerator>();
+builder.Services.AddScoped<IOTPRepository, OTPRepository>();
+builder.Services.AddScoped<IOTPService, OTPService>();
 
 builder.Services
     .AddAuthentication(options =>

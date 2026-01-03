@@ -15,7 +15,7 @@ namespace Quizzen.API.Controllers
 {
     [Route("api/account")]
     [ApiController]
-    public class AccountController(IAccountService accountService, IEmailService emailService, SignInManager<User> signInManager, LinkGenerator linkGenerator) : ControllerBase
+    public class AccountController(IAccountService accountService, IOTPService otpService, SignInManager<User> signInManager, LinkGenerator linkGenerator) : ControllerBase
     {
         /// <summary>
         ///
@@ -95,25 +95,6 @@ namespace Quizzen.API.Controllers
                 Message     : "Refresh token successful.",
                 Data        : null,
                 Timestamp   : DateTime.UtcNow
-            );
-
-            return Ok(response);
-        }
-
-        /// <summary>
-        /// 
-        /// </summary>
-        /// <returns></returns>
-        [HttpPost("recover-username")]
-        public async Task<IActionResult> RecoverUsername(string email)
-        {
-            await accountService.RecoverUsername(email);
-
-            var response = new SuccessResponse<object?>(
-                StatusCode: 200,
-                Message: "Recover username successful.",
-                Data: null,
-                Timestamp: DateTime.UtcNow
             );
 
             return Ok(response);
@@ -232,5 +213,62 @@ namespace Quizzen.API.Controllers
 
             return Redirect(returnUrl);
         }
-    }   
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <returns></returns>
+        [HttpPost("recover-username")]
+        public async Task<IActionResult> RecoverUsername(RecoverUsernameRequest recoverUsernameRequest)
+        {
+            await accountService.RecoverUsername(recoverUsernameRequest);
+
+            var response = new SuccessResponse<object?>(
+                StatusCode: 200,
+                Message: "Recover username successful.",
+                Data: null,
+                Timestamp: DateTime.UtcNow
+            );
+
+            return Ok(response);
+        }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <returns></returns>
+        [HttpPost("send-otp-to-email")]
+        public async Task<IActionResult> SendOTPToEmail(SendOTPToEmailRequest sendOTPToEmailRequest)
+        {
+            await otpService.SendOTPToEmailAsync(sendOTPToEmailRequest);
+
+            var response = new SuccessResponse<object?>(
+                StatusCode: 200,
+                Message: "The OTP code has been successfully sent to your email.",
+                Data: null,
+                Timestamp: DateTime.UtcNow
+            );
+
+            return Ok(response);
+        }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <returns></returns>
+        [HttpPost("verify-otp")]
+        public async Task<IActionResult> VerifyOTP(VerifyOTPRequest verifyOTPRequest)
+        {
+            await otpService.VerifyOTPAsync(verifyOTPRequest);
+
+            var response = new SuccessResponse<object?>(
+                StatusCode: 200,
+                Message: "OTP verified successfully.",
+                Data: null,
+                Timestamp: DateTime.UtcNow
+            );
+
+            return Ok(response);
+        }
+    }
 }

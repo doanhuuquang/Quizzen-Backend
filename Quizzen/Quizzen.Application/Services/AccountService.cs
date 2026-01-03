@@ -83,23 +83,6 @@ namespace Quizzen.Application.Services
             authTokenProcessor.WriteAuthTokenAsHttpOnlyCookie("REFRESH_TOKEN", refreshTokenValue, refreshTokenExpirationInUtc);
         }
 
-        public async Task RecoverUsername(string email)
-        {
-            var userExists = await userManager.FindByEmailAsync(email);
-
-            if (userExists is null) throw new UserNotExistsException(email: email);
-            else 
-            {
-                var emailRequest = new EmailRequest
-                {
-                    Receptor    = email,
-                    subject     = "Username Recovery",
-                    body        = $"Hello {userExists.FirstName},\n\nYour username is: {userExists.UserName}\n\nBest regards,\nQuizzen Team"
-                };
-                await emailProcessor.SendEmail(emailRequest);
-            }
-        }
-
         public async Task LoginWithGoogleAsync(ClaimsPrincipal? claimsPrincipal)
         {
             if (claimsPrincipal == null) throw new ExternalLoginProviderException("Google", "ClaimsPrincipal is null");
@@ -260,6 +243,23 @@ namespace Quizzen.Application.Services
 
             authTokenProcessor.WriteAuthTokenAsHttpOnlyCookie("ACCESS_TOKEN", jwtToken, expirationDateInUtc);
             authTokenProcessor.WriteAuthTokenAsHttpOnlyCookie("REFRESH_TOKEN", refreshTokenValue, refreshTokenExpirationInUtc);
+        }
+
+        public async Task RecoverUsername(RecoverUsernameRequest recoverUsernameRequest)
+        {
+            var userExists = await userManager.FindByEmailAsync(recoverUsernameRequest.Email);
+
+            if (userExists is null) throw new UserNotExistsException(email: recoverUsernameRequest.Email);
+            else
+            {
+                var emailRequest = new EmailRequest
+                {
+                    Receptor = recoverUsernameRequest.Email,
+                    subject = "Username Recovery",
+                    body = $"Hello {userExists.FirstName},\n\nYour username is: {userExists.UserName}\n\nBest regards,\nQuizzen Team"
+                };
+                await emailProcessor.SendEmail(emailRequest);
+            }
         }
     }
 }

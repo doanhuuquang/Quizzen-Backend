@@ -6,14 +6,10 @@ using Quizzen.Domain.Entities;
 
 namespace Quizzen.Infrastructure
 {
-    public class ApplicationDbContext : IdentityDbContext<User, IdentityRole<Guid>, Guid>
+    public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) : IdentityDbContext<User, IdentityRole<Guid>, Guid>(options)
     {
-        public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) : base(options)
-        {
-
-        }
-
         public DbSet<User> Users { set; get; }
+        public DbSet<OTP> OTPs { set; get; }
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
@@ -21,6 +17,14 @@ namespace Quizzen.Infrastructure
 
             builder.Entity<User>().Property(u => u.FirstName).HasMaxLength(256); 
             builder.Entity<User>().Property(u => u.LastName).HasMaxLength(256);
+
+            builder.Entity<OTP>(e =>
+            {
+                e.HasKey(x => x.Id);
+                e.Property(x => x.Email).IsRequired();
+                e.Property(x => x.Code).IsRequired();
+                e.HasIndex(x => new { x.Email, x.Code });
+            });
         }
     }
 }

@@ -13,12 +13,12 @@ namespace Quizzen.Application.Abstracts
 
         Task RefreshTokenAsync(string? refreshToken);
 
-        Task RecoverUsername(string email);
-
         Task LoginWithGoogleAsync(ClaimsPrincipal? claimsPrincipal);
 
         Task LoginWithFacebookAsync(ClaimsPrincipal? claimsPrincipal);
 
         Task LoginWithMicrosoftAsync(ClaimsPrincipal? claimsPrincipal);
+
+        Task RecoverUsername(RecoverUsernameRequest recoverUsernameRequest);
     }
 }
