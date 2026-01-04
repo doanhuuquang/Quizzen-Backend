@@ -1,4 +1,4 @@
-﻿namespace Quizzen.Domain.Requests
+﻿namespace Quizzen.Domain.DTOs.Requests
 {
     public record EmailRequest
     {

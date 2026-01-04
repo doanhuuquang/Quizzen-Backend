@@ -1,4 +1,4 @@
-﻿using Quizzen.Domain.Requests;
+﻿using Quizzen.Domain.DTOs.Requests;
 
 namespace Quizzen.Application.Abstracts
 {

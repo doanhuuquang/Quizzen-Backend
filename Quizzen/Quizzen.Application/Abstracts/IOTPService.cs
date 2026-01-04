@@ -1,10 +1,11 @@
-﻿using Quizzen.Domain.Requests;
+﻿using Quizzen.Domain.DTOs.Requests;
+using Quizzen.Domain.Entities;
 
 namespace Quizzen.Application.Abstracts
 {
     public interface IOTPService
     {
         public Task SendOTPToEmailAsync(SendOTPToEmailRequest sendOTPToEmailRequest);
-        public Task VerifyOTPAsync(VerifyOTPRequest verifyOTPRequest);
+        public Task<string?> VerifyOTPAsync(VerifyOTPRequest verifyOTPRequest);
     }
 }

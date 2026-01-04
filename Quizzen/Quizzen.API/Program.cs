@@ -58,6 +58,7 @@ builder.Services.AddScoped<IAccountService, AccountService>();
 builder.Services.AddScoped<IOTPGenerator, OTPGenerator>();
 builder.Services.AddScoped<IOTPRepository, OTPRepository>();
 builder.Services.AddScoped<IOTPService, OTPService>();
+builder.Services.AddScoped<IActionTokenRepository, ActionTokenRepository>();
 
 builder.Services
     .AddAuthentication(options =>

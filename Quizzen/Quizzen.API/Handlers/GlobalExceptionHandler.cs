@@ -18,12 +18,15 @@ namespace Quizzen.API.Handlers
                 RefreshTokenException           => (HttpStatusCode.Unauthorized, "RefreshTokenError"),
                 UserNotExistsException          => (HttpStatusCode.NotFound, "UserNotExists"),
                 OTPException                    => (HttpStatusCode.BadRequest, "OTPError"),
+                ActionTokenException            => (HttpStatusCode.BadRequest, "ActionTokenError"),
+                ResetPasswordException          => (HttpStatusCode.BadRequest, "ResetPasswordError"),
                 _                               => (HttpStatusCode.InternalServerError, "InternalServerError")
+
             };
 
             logger.LogError(exception, "An error occurred while processing the request");
 
-            var response = new ErrorResponse(
+            var response    = new ErrorResponse(
                 StatusCode  : (int)statusCode,
                 Error       : errorCode,
                 Message     : exception.Message,

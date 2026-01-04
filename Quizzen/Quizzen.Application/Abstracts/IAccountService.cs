@@ -1,4 +1,4 @@
-﻿using Quizzen.Domain.Requests;
+﻿using Quizzen.Domain.DTOs.Requests;
 using System.Security.Claims;
 
 namespace Quizzen.Application.Abstracts
@@ -19,6 +19,9 @@ namespace Quizzen.Application.Abstracts
 
         Task LoginWithMicrosoftAsync(ClaimsPrincipal? claimsPrincipal);
 
-        Task RecoverUsername(RecoverUsernameRequest recoverUsernameRequest);
+        Task RecoverUsernameAsync(RecoverUsernameRequest recoverUsernameRequest);
+
+        Task ResetPasswordAsync(ResetPasswordRequest resetPasswordRequest);
+        
     }
 }

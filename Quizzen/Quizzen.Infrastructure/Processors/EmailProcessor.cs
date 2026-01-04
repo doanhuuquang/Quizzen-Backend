@@ -1,6 +1,6 @@
 ﻿using Microsoft.Extensions.Options;
 using Quizzen.Application.Abstracts;
-using Quizzen.Domain.Requests;
+using Quizzen.Domain.DTOs.Requests;
 using Quizzen.Infrastructure.Options;
 using System.Net;
 using System.Net.Mail;

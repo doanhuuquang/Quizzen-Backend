@@ -1,13 +1,14 @@
 ﻿using Microsoft.AspNetCore.Identity;
 using Quizzen.Application.Abstracts;
+using Quizzen.Domain.DTOs.Requests;
 using Quizzen.Domain.Entities;
+using Quizzen.Domain.enums;
 using Quizzen.Domain.Exceptions;
-using Quizzen.Domain.Requests;
 using System.Security.Claims;
 
 namespace Quizzen.Application.Services
 {
-    public class AccountService(IAuthTokenProcessor authTokenProcessor, IEmailProcessor emailProcessor, UserManager<User> userManager, IUserRepository userRepository) : IAccountService
+    public class AccountService(IAuthTokenProcessor authTokenProcessor, IEmailProcessor emailProcessor, UserManager<User> userManager, IUserRepository userRepository, IActionTokenRepository actionTokenRepository) : IAccountService
     {
         public async Task RegisterAsync(RegisterRequest registerRequest)
         {
@@ -245,7 +246,7 @@ namespace Quizzen.Application.Services
             authTokenProcessor.WriteAuthTokenAsHttpOnlyCookie("REFRESH_TOKEN", refreshTokenValue, refreshTokenExpirationInUtc);
         }
 
-        public async Task RecoverUsername(RecoverUsernameRequest recoverUsernameRequest)
+        public async Task RecoverUsernameAsync(RecoverUsernameRequest recoverUsernameRequest)
         {
             var userExists = await userManager.FindByEmailAsync(recoverUsernameRequest.Email);
 
@@ -260,6 +261,24 @@ namespace Quizzen.Application.Services
                 };
                 await emailProcessor.SendEmail(emailRequest);
             }
+        }
+
+        public async Task ResetPasswordAsync(ResetPasswordRequest resetPasswordRequest)
+        {
+            var user                = await userManager.FindByEmailAsync(resetPasswordRequest.Email) ?? throw new UserNotExistsException(email: resetPasswordRequest.Email);
+            var resetPasswordToken  = await actionTokenRepository.GetActionTokenAsync(user.Id, ActionTokenPurpose.ResetPassword) ?? throw new ActionTokenException("Invalid or expired reset password token.");
+
+            if (resetPasswordToken.Token != resetPasswordRequest.ResetPasswordToken) throw new ActionTokenException("Invalid reset password token.");
+
+            user.PasswordHash   = userManager.PasswordHasher.HashPassword(user, resetPasswordRequest.NewPassword);
+            user.SecurityStamp  = Guid.NewGuid().ToString();
+
+            var result = await userManager.UpdateAsync(user);
+
+            if (!result.Succeeded) throw new ResetPasswordException(result.Errors.Select(x => x.Description));
+
+            resetPasswordToken.IsUsed = true;
+            await actionTokenRepository.UpdateActionTokenAsync(resetPasswordToken);
         }
     }
 }

@@ -1,12 +1,12 @@
 ﻿using Microsoft.AspNetCore.Identity;
 using Quizzen.Application.Abstracts;
+using Quizzen.Domain.DTOs.Requests;
 using Quizzen.Domain.Entities;
 using Quizzen.Domain.Exceptions;
-using Quizzen.Domain.Requests;
 
 namespace Quizzen.Application.Services
 {
-    public class OTPService(UserManager<User> userManager, IOTPRepository otpRepository, IEmailProcessor emailProcessor) : IOTPService
+    public class OTPService(UserManager<User> userManager, IOTPRepository otpRepository, IActionTokenRepository actionTokenRepository, IEmailProcessor emailProcessor) : IOTPService
     {
         public async Task SendOTPToEmailAsync(SendOTPToEmailRequest sendOTPToEmailRequest)
         {
@@ -27,7 +27,7 @@ namespace Quizzen.Application.Services
             }
         }
 
-        public async Task VerifyOTPAsync(VerifyOTPRequest verifyOTPRequest)
+        public async Task<string?> VerifyOTPAsync(VerifyOTPRequest verifyOTPRequest)
         {
             var otp = await otpRepository.GetOTPAsync(verifyOTPRequest.Email) ?? throw new OTPException("Invalid or expired OTP. Please request a new one.");
             
@@ -35,7 +35,12 @@ namespace Quizzen.Application.Services
 
             otp.IsUsed = true;
 
+            var user = await userManager.FindByEmailAsync(verifyOTPRequest.Email) ?? throw new UserNotExistsException(email: verifyOTPRequest.Email);
+            var resetPasswordToken = await actionTokenRepository.CreateActionTokenAsync(user.Id) ?? throw new OTPException("Failed to create reset password token. Please try again.");
+
             await otpRepository.UpdateOTPAsync(otp);
+
+            return resetPasswordToken.Token;
         }
     }
 }

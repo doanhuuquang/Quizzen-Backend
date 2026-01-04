@@ -8,8 +8,8 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Quizzen.API.ApiResponse;
 using Quizzen.Application.Abstracts;
+using Quizzen.Domain.DTOs.Requests;
 using Quizzen.Domain.Entities;
-using Quizzen.Domain.Requests;
 
 namespace Quizzen.API.Controllers
 {
@@ -221,7 +221,7 @@ namespace Quizzen.API.Controllers
         [HttpPost("recover-username")]
         public async Task<IActionResult> RecoverUsername(RecoverUsernameRequest recoverUsernameRequest)
         {
-            await accountService.RecoverUsername(recoverUsernameRequest);
+            await accountService.RecoverUsernameAsync(recoverUsernameRequest);
 
             var response = new SuccessResponse<object?>(
                 StatusCode: 200,
@@ -237,33 +237,14 @@ namespace Quizzen.API.Controllers
         /// 
         /// </summary>
         /// <returns></returns>
-        [HttpPost("send-otp-to-email")]
-        public async Task<IActionResult> SendOTPToEmail(SendOTPToEmailRequest sendOTPToEmailRequest)
+        [HttpPost("reset-password")]
+        public async Task<IActionResult> ResetPassword(ResetPasswordRequest resetPasswordRequest)
         {
-            await otpService.SendOTPToEmailAsync(sendOTPToEmailRequest);
+            await accountService.ResetPasswordAsync(resetPasswordRequest);
 
             var response = new SuccessResponse<object?>(
                 StatusCode: 200,
-                Message: "The OTP code has been successfully sent to your email.",
-                Data: null,
-                Timestamp: DateTime.UtcNow
-            );
-
-            return Ok(response);
-        }
-
-        /// <summary>
-        /// 
-        /// </summary>
-        /// <returns></returns>
-        [HttpPost("verify-otp")]
-        public async Task<IActionResult> VerifyOTP(VerifyOTPRequest verifyOTPRequest)
-        {
-            await otpService.VerifyOTPAsync(verifyOTPRequest);
-
-            var response = new SuccessResponse<object?>(
-                StatusCode: 200,
-                Message: "OTP verified successfully.",
+                Message: "Reset password successful.",
                 Data: null,
                 Timestamp: DateTime.UtcNow
             );
